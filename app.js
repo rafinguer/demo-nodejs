@@ -157,5 +157,5 @@ function queryZip(callback) {
 // Enables NodeJS Server and enables the / path
 var port = process.env.PORT || 3000;
 
-app.get('/', (req, res) => res.send('WagonGO está vivo!!!<br></br>' + result));
+app.get('/wagongo/api/v1/zips', (req, res) => res.send('WagonGO está vivo!!!<br></br>' + result));
 app.listen (port, () => console.log("Server is running on port " + port));
