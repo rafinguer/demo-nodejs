@@ -16,26 +16,40 @@ const config = {
 };
 const dbclient = new pg.Client(config);
 
+var result = "";
+
 // Connection to database
 dbclient.connect(err => {
     if (err) throw err;
     else {
         console.log("Conexión a base de datos realizada con éxito");
-        createTable();
 
-        setInterval(function() {
-            queryZip();
+        createTable(function(r) {
+            if (r.status == "OK") {
+                console.log("createTable() => OK");
 
-            setInterval(function() {
-                dbclient.end(console.log("Conexión cerrada"));    
-            }, 5000);
-            
-        }, 5000);
+                queryZip(function(res) {
+
+                    if (res.status == "OK") {
+                        console.log("queryZip() => OK");
+                    } else {
+                        console.log("queryZip() => KO");
+                    }
+
+                    dbclient.end(console.log("Conexión cerrada"));
+                });
+            } else {
+                console.log("createTable() => OK");
+                dbclient.end(console.log("Conexión cerrada"));
+            }
+        });
+
     }
 });
 
-function createTable() {
+function createTable(callback) {
     console.log("Creando tabla 'zip'")
+
     const qry = `
         DROP TABLE IF EXISTS zip;
 
@@ -103,16 +117,15 @@ function createTable() {
     dbclient.query(qry)
         .then(()=> {
             console.log("Estructura y carga de datos OK");
+            callback({"status": "OK", "result": "Estructura y carga de datos OK"});
         })
         .catch(err => {
             console.log("Error: " + err);
-        })
-        .then(()=> {
-            console.log("Ejecución terminada. Proceso finalizado");
+            callback({"status": "KO", "result": err});
         })
 }
 
-function queryZip() {
+function queryZip(callback) {
     console.log("Consultando la tabla 'zip'")
 
     const qry = "SELECT * FROM zip";
@@ -121,19 +134,28 @@ function queryZip() {
         .then(res => {
             const rows = res.rows;
 
+            result = "<table><tr><td>CP</td><td>REGION</td><td>Código</td></tr>"
+
             rows.map(row => {
                 console.log(`Read: ${JSON.stringify(row)}`);
+                result += "<tr><td>" + row.zip_id + "</td>";
+                result += "<td>" + row.region + "</td>";
+                result += "<td>" + row.ministry_id + "</td></tr>"
             });
 
-            process.exit();
+            result += "</table>";
+
+            callback({"status": "OK", "result": result});
+
         })
         .catch(err => {
-            console.log("Error executing query '" + qry + "': " + err)
+            console.log("Error executing query '" + qry + "': " + err);
+            callback({"status": "KO", "result": err});
         });
 }
 
 // Enables NodeJS Server and enables the / path
 var port = process.env.PORT || 3000;
 
-app.get('/', (req, res) => res.send('WagonGO está vivo!!!'));
+app.get('/wagongo/api/v1/zips', (req, res) => res.send('WagonGO está vivo!!!<br></br>' + result));
 app.listen (port, () => console.log("Server is running on port " + port));
